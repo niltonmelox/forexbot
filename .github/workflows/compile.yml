@@ -1,0 +1,46 @@
+---
+name: Compile
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  push:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  Compile:
+    defaults:
+      run:
+        shell: powershell
+        working-directory: src
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: List MQL files
+        run: '(Get-ChildItem -Recurse -Path . -Include *.mq[45]).fullname'
+        shell: powershell
+      - name: Compiles EA (MQL4)
+        uses: fx31337/mql-compile-action@master
+        with:
+          path: src\EA31337-Libre.mq4
+          verbose: true
+
+      - name: Compiles EA (MQL5)
+        uses: fx31337/mql-compile-action@master
+        with:
+          path: src\EA31337-Libre.mq5
+          verbose: true
+      - name: List compiled files
+        run: '(Get-ChildItem -Recurse -Path . -Include *.ex[45]).fullname'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: EA
+          path: 'src/*.ex?'

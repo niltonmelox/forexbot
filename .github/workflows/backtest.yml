@@ -1,0 +1,75 @@
+---
+name: Backtest
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - 'v*-backtest'
+  release:
+    types:
+      - published
+
+jobs:
+
+  Compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: List MQL files
+        run: '(Get-ChildItem -Recurse -Path . -Include *.mq[45]).fullname'
+        shell: powershell
+      - name: Compiles EA (MQL4)
+        uses: fx31337/mql-compile-action@master
+        with:
+          path: src\EA31337-Libre.mq4
+          verbose: true
+
+      - name: Compiles EA (MQL5)
+        uses: fx31337/mql-compile-action@master
+        with:
+          path: src\EA31337-Libre.mq5
+          verbose: true
+      - name: List compiled files
+        run: '(Get-ChildItem -Recurse -Path . -Include *.ex[45]).fullname'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: EA
+          path: 'src/*.ex?'
+
+  Backtest:
+
+    defaults:
+      run:
+        shell: bash
+
+    needs: Compile
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        deposit: [10000, 100000]
+        spread: [1, 10]
+        year: [2020]
+
+    steps:
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: EA
+
+      - name: Test ${{ matrix.year }}.${{ matrix.month }}
+        uses: fx31337/mql-tester-action@master
+        with:
+          BtDeposit: ${{ matrix.deposit }}
+          BtDigits: 5
+          BtMonths: 1-12
+          BtSpread: ${{ matrix.spread }}
+          BtYears: ${{ matrix.year }}
+          RunOnError: 'show_logs && parse_results $@; exit 0'
+          TestExpert: EA31337-Libre
+          TestPeriod: M1
